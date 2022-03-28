@@ -114,60 +114,64 @@ module.exports = (() => {
 					}
 				);
 			}
-			
-			const KeyRecorder = class KeyRecorder extends WebpackModules.getByDisplayName("KeyRecorder") {
-				render() {
-					const ButtonOptions = WebpackModules.getByProps("ButtonLink");
-					const Button = ButtonOptions.default;
-					const ret = super.render();
-					ret.props.children.props.children.props.children.push(
-						React.createElement(
-							DiscordModules.FlexChild,
-							{
-								style: { margin: 0 } 
-							},
-							React.createElement(
-								Button,
-								{
-									className: WebpackModules.getByProps("editIcon", "button").button.split(" ")[1],
-									size: Button.Sizes.MIN,
-									color: ButtonOptions.ButtonColors.GREY,
-									look: ButtonOptions.ButtonLooks.GHOST,
-									onClick: this.props.onRemove
+			let KeyRecorder, KeybindModule, Keybind;
+			function loadKeybind() {
+				if (!Keybind) {
+					KeyRecorder = class KeyRecorder extends WebpackModules.getByDisplayName("KeyRecorder") {
+						render() {
+							const ButtonOptions = WebpackModules.getByProps("ButtonLink");
+							const Button = ButtonOptions.default;
+							const ret = super.render();
+							ret.props.children.props.children.props.children.push(
+								React.createElement(
+									DiscordModules.FlexChild,
+									{
+										style: { margin: 0 } 
+									},
+									React.createElement(
+										Button,
+										{
+											className: WebpackModules.getByProps("editIcon", "button").button.split(" ")[1],
+											size: Button.Sizes.MIN,
+											color: ButtonOptions.ButtonColors.GREY,
+											look: ButtonOptions.ButtonLooks.GHOST,
+											onClick: this.props.onRemove
+										},
+										"Remove"
+									)
+								)
+							);
+							return ret;
+						}
+					};
+					KeybindModule = class KeybindModule extends DiscordModules.Keybind {
+						constructor(props) {
+							super(props);
+						}
+						render() {
+							const ret = super.render();
+							ret.type = KeyRecorder;
+							ret.props.account = this.props.account;
+							ret.props.onRemove = this.props.onRemove;
+							return ret;
+						}
+					};
+					Keybind = class Keybind extends Settings.SettingField {
+						constructor(account, onChange, onRemove) {
+							super(account.name + " (" + account.id + ")", "", onChange, KeybindModule, {
+								defaultValue: (account.keybind[0] !== -1 && account.keybind.map(a => [0, a])) || [],
+								onChange: element => value => {
+									if (!Array.isArray(value)) return;
+									element.props.value = value;
+									this.onChange(value.map(a => a[1]));
 								},
-								"Remove"
-							)
-						)
-					);
-					return ret;
+								account,
+								onRemove
+							});
+						}
+					};
 				}
-			};
-			const KeybindModule = class KeybindModule extends DiscordModules.Keybind {
-				constructor(props) {
-					super(props);
-				}
-				render() {
-					const ret = super.render();
-					ret.type = KeyRecorder;
-					ret.props.account = this.props.account;
-					ret.props.onRemove = this.props.onRemove;
-					return ret;
-				}
-			};
-			const Keybind = class Keybind extends Settings.SettingField {
-				constructor(account, onChange, onRemove) {
-					super(account.name + " (" + account.id + ")", "", onChange, KeybindModule, {
-						defaultValue: (account.keybind[0] !== -1 && account.keybind.map(a => [0, a])) || [],
-						onChange: element => value => {
-							if (!Array.isArray(value)) return;
-							element.props.value = value;
-							this.onChange(value.map(a => a[1]));
-						},
-						account,
-						onRemove
-					});
-				}
-			};
+			}
 			return class AccountSwitcher extends Plugin {
 				updateAvatars(){
 					this.settings.accounts.forEach(acc => {
@@ -332,8 +336,10 @@ module.exports = (() => {
 						});
 					});
 				}
-				
-				getSettingsPanel(){
+
+				getSettingsPanel() {
+					loadKeybind();
+
 					const panel = document.createElement("div");
 					panel.className = "form";
 					panel.style = "width:100%;"
